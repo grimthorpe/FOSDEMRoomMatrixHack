@@ -1,5 +1,8 @@
 const {MatrixClient, LogService, LogLevel, UserID} = require("matrix-bot-sdk");
 
+// The idea is that we are prepending a year on to room names and aliases.
+const newPrefix = "2021";
+
 // Load credentials - see accesstoken.js.sample
 Creds = require("./accesstoken.js");
 
@@ -12,11 +15,39 @@ function isValidRoomToChange(roomObj)
 	if(!roomObj.createObj || !roomObj.nameObj)
 		return false;
 
+	// Do not change Spaces
+	if(roomObj.createObj['content']['type'] === 'm.space')
+		return false;
+
 	return roomObj.createObj['content']['creator'] === Creds.username;
+}
+
+async function setRoomName(roomObj, newName)
+{
+	setRoomNameEvent =
+	{
+		"name": newName,
+	}
+
+	theMatrix.sendStateEvent(roomObj.roomId, "m.room.name", "", setRoomNameEvent);
+}
+
+function addOrReplacePrefix(name, prefixSeperator)
+{
+	pos = name.indexOf(prefixSeperator)
+	if(pos >= 0)
+	{
+		name=name.substr(pos + prefixSeperator.length);
+	}
+
+	return "" + newPrefix + prefixSeperator + name;
 }
 
 async function changeRoom(roomObj)
 {
+	roomName = addOrReplacePrefix(roomObj.nameObj['content']['name'], ": ");
+	setRoomName(roomObj, roomName);
+	
 	console.log(roomObj.roomId);
 	console.log(roomObj.nameObj);
 	console.log(roomObj.aliasObj);
