@@ -34,11 +34,15 @@ function addOrReplacePrefix(name, prefixSeperator)
 	const pos = name.indexOf(prefixSeperator)
 	if(pos >= 0)
 	{
-		const s = name.substring(0, pos);
-		// Dirty check for numeric value - parse the string as an integer and then check if that matches with the original string.
-		if(parseInt(s) == s)
+		// Check if our prefix lengths match.
+		if(pos == newPrefix.length)
 		{
-			name=name.substr(pos + prefixSeperator.length);
+			const s = name.substring(0, pos);
+			// Dirty check for numeric value - parse the string as an integer and then check if that matches with the original string.
+			if(parseInt(s) == s)
+			{
+				name=name.substr(pos + prefixSeperator.length);
+			}
 		}
 	}
 
@@ -52,7 +56,7 @@ function addOrReplacePrefixForName(name)
 
 function addOrReplacePrefixForAlias(alias)
 {
-	return '#' + addOrReplacePrefix(alias.substr(1), '_-_');
+	return '#' + addOrReplacePrefix(alias.substr(1), '-');
 }
 
 function addRoomToChange(roomObj)
@@ -74,11 +78,18 @@ function addRoomToChange(roomObj)
 			changeData.oldCanonicalAlias = oldCanonicalAlias;
 			changeData.newCanonicalAlias = addOrReplacePrefixForAlias(oldCanonicalAlias);
 		}
+		if(oldAliasList)
+		{
+			// NOTE: The alias list only contains PUBLISHED aliases.
+			let newAliasList=[];
+			for(const alias of oldAliasList)
+			{
+				newAliasList[newAliasList.length]=addOrReplacePrefixForAlias(alias);
+			}
+			changeData.oldAliasList = oldAliasList;
+			changeData.newAliasList = newAliasList;
+		}
 	}
-//	console.log(roomObj.roomId);
-//	console.log(roomObj.nameObj);
-//	console.log(roomObj.aliasObj);
-//	console.log(roomObj.createObj);
 
 	roomsToChange.set(roomObj.roomId, changeData);
 }
@@ -89,11 +100,12 @@ async function enumerateRooms()
 	const joinedRoomIds = await theMatrix.getJoinedRooms();
 	const totalRoomCount = joinedRoomIds.length;
 	let thisRoomCount = 0;
+	const stringRoomCount = String(totalRoomCount);
 
 	for(const roomId of joinedRoomIds)
 	{
 		thisRoomCount++;
-		console.log("%d%%: %s", Math.round((thisRoomCount / totalRoomCount)*100), roomId);
+		console.log("%s%: [%s/%s] %s", String(Math.round((thisRoomCount / totalRoomCount)*100)).padStart(3), String(thisRoomCount).padStart(stringRoomCount.length), stringRoomCount, roomId);
 		// Get the state of each room.
 		roomObj={roomId: roomId};
 
