@@ -1,3 +1,4 @@
 exports.accessToken="<REDACTED>";
 exports.matrixServerURL="https://matrix.org";
+exports.username="@example:example.org";
 
