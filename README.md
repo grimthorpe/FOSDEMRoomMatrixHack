@@ -1,6 +1,18 @@
 # FOSDEMRoomMatrixHack
 Update existing FOSDEM Room aliases to include the year
 
+INSTALLATION:
+
+Pre-requisites:
+	npm
+	nodejs
+
+Clone the code
+Run 'npm install' to install the required javascript libraries
+Run 'node ./botcode.js' to run the code.
+
+NOTES:
+
 Initial goal: Move the 2021 FOSDEM talk rooms into the 2021 FOSDEM Space, and update their alises so they have the year prepended so they don't block future talk room creation.
 
 Update the canonical alias and other aliases of each room the admin bot is in.
