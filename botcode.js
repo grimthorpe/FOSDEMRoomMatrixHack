@@ -70,8 +70,9 @@ function addRoomToChange(roomObj)
 	
 	if(roomObj.aliasObj)
 	{
+console.log(roomObj.aliasObj);
 		const oldCanonicalAlias = roomObj.aliasObj['content']['alias'];
-		const oldAliasList = roomObj.aliasObj['content']['alt_aliases'] || {};
+		const oldAliasList = roomObj.aliasObj['content']['alt_aliases'];
 
 		if(oldCanonicalAlias)
 		{
@@ -123,21 +124,54 @@ async function enumerateRooms()
 	updateRooms();
 }
 
-async function setRoomName(roomObj, newName)
+async function setRoomName(roomId, newName)
 {
 	setRoomNameEvent =
 	{
 		"name": newName,
 	}
 
-	await theMatrix.sendStateEvent(roomObj.roomId, "m.room.name", "", setRoomNameEvent);
+	await theMatrix.sendStateEvent(roomId, "m.room.name", "", setRoomNameEvent);
 }
 
-function updateRoom(roomId, roomData)
+async function setRoomAliases(roomId, canonicalAlias, aliasList)
+{
+	setCanonicalAliasEvent = {}
+	if(canonicalAlias)
+	{
+		setCanonicalAliasEvent["alias"] = canonicalAlias;
+	}
+	if(aliasList)
+	{
+		setCanonicalAliasEvent["alt_aliases"] = aliasList;
+	}
+console.log(setCanonicalAliasEvent);
+	await theMatrix.sendStateEvent(roomId, "m.room.canonical_alias", "", setCanonicalAliasEvent);
+}
+
+async function modifyRoomAliases(roomId, oldAliasList, newAliasList)
+{
+	for(const alias of oldAliasList)
+	{
+		await theMatrix.deleteRoomAlias(alias);
+	}
+	for(const alias of newAliasList)
+	{
+		await theMatrix.createRoomAlias(alias, roomId);
+	}
+}
+
+
+async function updateRoom(roomId, roomData)
 {
 	console.log("Updateding room " + roomId);
-	if(roomData.oldRoomName != roomData.newRoomName)
-		setRoomName(roomId, roomData);
+	await setRoomName(roomId, roomData.newRoomName);
+
+	if(roomData.newAliasList)
+		await modifyRoomAliases(roomId, roomData.oldAliasList, roomData.newAliasList);
+
+	if(roomData.newCanonicalAlias)
+		await setRoomAliases(roomId, roomData.newCanonicalAlias, roomData.newAliasList);
 }
 
 function updateRooms()
@@ -151,7 +185,7 @@ function updateRooms()
 
 	if(readline.keyInYN("Do you want to set this?"))
 	{
-//		roomsToChange.forEach(function(roomData, roomId) { updateRoom(roomId, roomData); });
+		roomsToChange.forEach(function(roomData, roomId) { updateRoom(roomId, roomData); });
 	}
 }
 
