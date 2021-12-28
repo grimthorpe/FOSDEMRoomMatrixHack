@@ -1,0 +1,3 @@
+exports.accessToken="<REDACTED>";
+exports.matrixServerURL="https://matrix.org";
+
