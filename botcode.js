@@ -3,7 +3,7 @@ const readline = require("readline-sync");
 
 // The idea is that we are prepending a year on to room names and aliases.
 // NOTE: We can oonly deal with numeric prefixes here
-const newPrefix = "2022";
+const newPrefix = "2021";
 
 // Load credentials - see accesstoken.js.sample
 Creds = require("./accesstoken.js");
