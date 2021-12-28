@@ -1,4 +1,5 @@
 const {MatrixClient, LogService, LogLevel, UserID} = require("matrix-bot-sdk");
+const readline = require("readline-sync");
 
 // The idea is that we are prepending a year on to room names and aliases.
 const newPrefix = "2021";
@@ -9,6 +10,8 @@ Creds = require("./accesstoken.js");
 // Connect to the matrix
 const theMatrix = new MatrixClient(Creds.matrixServerURL, Creds.accessToken);
 LogService.setLevel(LogLevel.DEBUG);
+
+roomsToChange=new Map();
 
 function isValidRoomToChange(roomObj)
 {
@@ -29,7 +32,7 @@ async function setRoomName(roomObj, newName)
 		"name": newName,
 	}
 
-	theMatrix.sendStateEvent(roomObj.roomId, "m.room.name", "", setRoomNameEvent);
+	await theMatrix.sendStateEvent(roomObj.roomId, "m.room.name", "", setRoomNameEvent);
 }
 
 function addOrReplacePrefix(name, prefixSeperator)
@@ -43,15 +46,22 @@ function addOrReplacePrefix(name, prefixSeperator)
 	return "" + newPrefix + prefixSeperator + name;
 }
 
-async function changeRoom(roomObj)
+function changeRoom(roomObj)
 {
-	roomName = addOrReplacePrefix(roomObj.nameObj['content']['name'], ": ");
-	setRoomName(roomObj, roomName);
+	const oldRoomName = roomObj.nameObj['content']['name'],
+	changeData =
+	{
+		oldRoomName: oldRoomName,
+		newRoomName: addOrReplacePrefix(oldRoomName, ": "),
+	}
+	//setRoomName(roomObj, roomName);
 	
 	console.log(roomObj.roomId);
 	console.log(roomObj.nameObj);
 	console.log(roomObj.aliasObj);
 	console.log(roomObj.createObj);
+
+	roomsToChange.set(roomObj.roomId, changeData);
 }
 
 async function enumerateRooms()
@@ -73,6 +83,27 @@ async function enumerateRooms()
 		{
 			changeRoom(roomObj);
 		}
+	}
+
+	updateRooms();
+}
+
+function updateRoom(roomId, roomData)
+{
+	console.log("Updateding room " + roomId);
+	if(roomData.oldRoomName != roomData.newRoomName)
+		setRoomName(roomId, roomData);
+}
+
+function updateRooms()
+{
+	for(const roomInfo of roomsToChange.entries())
+	{
+		console.log(roomInfo);
+	}
+	if(readline.keyInYN("Do you want to set this?"))
+	{
+		roomsToChange.forEach(function(roomData, roomId) { updateRoom(roomId, roomData); });
 	}
 }
 

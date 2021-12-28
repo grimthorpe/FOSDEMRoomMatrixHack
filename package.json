@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "matrix-bot-sdk": "^0.5.19"
+    "matrix-bot-sdk": "^0.5.19",
+    "readline-sync": "^1.4.10"
   }
 }
