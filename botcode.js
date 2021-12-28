@@ -130,13 +130,16 @@ function updateRoom(roomId, roomData)
 
 function updateRooms()
 {
-	for(const roomInfo of roomsToChange.entries())
-	{
-		console.log(roomInfo);
-	}
+	console.log();
+	console.log("Changes:");
+	console.log();
+
+	// Display the list of proposed changes
+	roomsToChange.forEach(function(roomData, roomId) { console.log(roomId); console.log(roomData), console.log() })
+
 	if(readline.keyInYN("Do you want to set this?"))
 	{
-		roomsToChange.forEach(function(roomData, roomId) { updateRoom(roomId, roomData); });
+//		roomsToChange.forEach(function(roomData, roomId) { updateRoom(roomId, roomData); });
 	}
 }
 
