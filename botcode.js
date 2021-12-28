@@ -2,6 +2,7 @@ const {MatrixClient, LogService, LogLevel, UserID} = require("matrix-bot-sdk");
 const readline = require("readline-sync");
 
 // The idea is that we are prepending a year on to room names and aliases.
+// NOTE: We can oonly deal with numeric prefixes here
 const newPrefix = "2021";
 
 // Load credentials - see accesstoken.js.sample
@@ -9,7 +10,7 @@ Creds = require("./accesstoken.js");
 
 // Connect to the matrix
 const theMatrix = new MatrixClient(Creds.matrixServerURL, Creds.accessToken);
-LogService.setLevel(LogLevel.DEBUG);
+//LogService.setLevel(LogLevel.DEBUG);
 
 roomsToChange=new Map();
 
@@ -22,44 +23,62 @@ function isValidRoomToChange(roomObj)
 	if(roomObj.createObj['content']['type'] === 'm.space')
 		return false;
 
+	// Check if the room creator matches
 	return roomObj.createObj['content']['creator'] === Creds.username;
 }
 
-async function setRoomName(roomObj, newName)
-{
-	setRoomNameEvent =
-	{
-		"name": newName,
-	}
-
-	await theMatrix.sendStateEvent(roomObj.roomId, "m.room.name", "", setRoomNameEvent);
-}
-
+// Add or replace the prefix on a name or alias.
+// Used so that we can run the script multiple times and not get repeated prefixes.
 function addOrReplacePrefix(name, prefixSeperator)
 {
-	pos = name.indexOf(prefixSeperator)
+	const pos = name.indexOf(prefixSeperator)
 	if(pos >= 0)
 	{
-		name=name.substr(pos + prefixSeperator.length);
+		const s = name.substring(0, pos);
+		// Dirty check for numeric value - parse the string as an integer and then check if that matches with the original string.
+		if(parseInt(s) == s)
+		{
+			name=name.substr(pos + prefixSeperator.length);
+		}
 	}
 
-	return "" + newPrefix + prefixSeperator + name;
+	return newPrefix + prefixSeperator + name;
 }
 
-function changeRoom(roomObj)
+function addOrReplacePrefixForName(name)
+{
+	return addOrReplacePrefix(name, ": ");
+}
+
+function addOrReplacePrefixForAlias(alias)
+{
+	return '#' + addOrReplacePrefix(alias.substr(1), '_-_');
+}
+
+function addRoomToChange(roomObj)
 {
 	const oldRoomName = roomObj.nameObj['content']['name'],
 	changeData =
 	{
 		oldRoomName: oldRoomName,
-		newRoomName: addOrReplacePrefix(oldRoomName, ": "),
+		newRoomName: addOrReplacePrefixForName(oldRoomName),
 	}
-	//setRoomName(roomObj, roomName);
 	
-	console.log(roomObj.roomId);
-	console.log(roomObj.nameObj);
-	console.log(roomObj.aliasObj);
-	console.log(roomObj.createObj);
+	if(roomObj.aliasObj)
+	{
+		const oldCanonicalAlias = roomObj.aliasObj['content']['alias'];
+		const oldAliasList = roomObj.aliasObj['content']['alt_aliases'] || {};
+
+		if(oldCanonicalAlias)
+		{
+			changeData.oldCanonicalAlias = oldCanonicalAlias;
+			changeData.newCanonicalAlias = addOrReplacePrefixForAlias(oldCanonicalAlias);
+		}
+	}
+//	console.log(roomObj.roomId);
+//	console.log(roomObj.nameObj);
+//	console.log(roomObj.aliasObj);
+//	console.log(roomObj.createObj);
 
 	roomsToChange.set(roomObj.roomId, changeData);
 }
@@ -68,9 +87,13 @@ async function enumerateRooms()
 {
 	// Get all the rooms we are in
 	const joinedRoomIds = await theMatrix.getJoinedRooms();
+	const totalRoomCount = joinedRoomIds.length;
+	let thisRoomCount = 0;
 
 	for(const roomId of joinedRoomIds)
 	{
+		thisRoomCount++;
+		console.log("%d%%: %s", Math.round((thisRoomCount / totalRoomCount)*100), roomId);
 		// Get the state of each room.
 		roomObj={roomId: roomId};
 
@@ -81,11 +104,21 @@ async function enumerateRooms()
 
 		if(isValidRoomToChange(roomObj))
 		{
-			changeRoom(roomObj);
+			addRoomToChange(roomObj);
 		}
 	}
 
 	updateRooms();
+}
+
+async function setRoomName(roomObj, newName)
+{
+	setRoomNameEvent =
+	{
+		"name": newName,
+	}
+
+	await theMatrix.sendStateEvent(roomObj.roomId, "m.room.name", "", setRoomNameEvent);
 }
 
 function updateRoom(roomId, roomData)
@@ -108,6 +141,4 @@ function updateRooms()
 }
 
 enumerateRooms();
-
-console.log("Done!");
 
