@@ -3,7 +3,7 @@ const readline = require("readline-sync");
 
 // The idea is that we are prepending a year on to room names and aliases.
 // NOTE: We can oonly deal with numeric prefixes here
-const newPrefix = "2021";
+const newPrefix = "2022";
 
 // Load credentials - see accesstoken.js.sample
 Creds = require("./accesstoken.js");
@@ -13,6 +13,11 @@ const theMatrix = new MatrixClient(Creds.matrixServerURL, Creds.accessToken);
 //LogService.setLevel(LogLevel.DEBUG);
 
 roomsToChange=new Map();
+
+function displayProgress(count, total, info)
+{
+	console.log("%s%: [%s/%s] %s", String(Math.round((count / total)*100)).padStart(3), String(count).padStart(String(total).length), total, info);
+}
 
 function isValidRoomToChange(roomObj)
 {
@@ -70,7 +75,6 @@ function addRoomToChange(roomObj)
 	
 	if(roomObj.aliasObj)
 	{
-console.log(roomObj.aliasObj);
 		const oldCanonicalAlias = roomObj.aliasObj['content']['alias'];
 		const oldAliasList = roomObj.aliasObj['content']['alt_aliases'];
 
@@ -106,7 +110,7 @@ async function enumerateRooms()
 	for(const roomId of joinedRoomIds)
 	{
 		thisRoomCount++;
-		console.log("%s%: [%s/%s] %s", String(Math.round((thisRoomCount / totalRoomCount)*100)).padStart(3), String(thisRoomCount).padStart(stringRoomCount.length), stringRoomCount, roomId);
+		displayProgress(thisRoomCount, totalRoomCount, roomId);
 		// Get the state of each room.
 		roomObj={roomId: roomId};
 
@@ -145,7 +149,6 @@ async function setRoomAliases(roomId, canonicalAlias, aliasList)
 	{
 		setCanonicalAliasEvent["alt_aliases"] = aliasList;
 	}
-console.log(setCanonicalAliasEvent);
 	await theMatrix.sendStateEvent(roomId, "m.room.canonical_alias", "", setCanonicalAliasEvent);
 }
 
@@ -164,7 +167,6 @@ async function modifyRoomAliases(roomId, oldAliasList, newAliasList)
 
 async function updateRoom(roomId, roomData)
 {
-	console.log("Updateding room " + roomId);
 	await setRoomName(roomId, roomData.newRoomName);
 
 	if(roomData.newAliasList)
@@ -185,7 +187,9 @@ function updateRooms()
 
 	if(readline.keyInYN("Do you want to set this?"))
 	{
-		roomsToChange.forEach(function(roomData, roomId) { updateRoom(roomId, roomData); });
+		let count = 1;
+		let totalCount = roomsToChange.size;
+		roomsToChange.forEach(function(roomData, roomId) { displayProgress(count++, totalCount, roomId + " - " + roomData.oldRoomName + " -> " + roomData.newRoomName); updateRoom(roomId, roomData); });
 	}
 }
 
