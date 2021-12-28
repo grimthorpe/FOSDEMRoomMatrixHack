@@ -176,14 +176,33 @@ async function updateRoom(roomId, roomData)
 		await setRoomAliases(roomId, roomData.newCanonicalAlias, roomData.newAliasList);
 }
 
+function displayRoomData(roomId, roomData)
+{
+	console.log("Room Id: %s", roomId);
+	console.log("Name: '%s' -> '%s'", roomData.oldRoomName, roomData.newRoomName);
+	if(roomData.oldCanonicalAlias)
+		console.log("Main Alias: '%s' -> '%s'", roomData.oldCanonicalAlias, roomData.newCanonicalAlias);
+	if(roomData.oldAliasList)
+	{
+		console.log("Alias changes:");
+		for(let i = 0; i < roomData.oldAliasList.length; i++)
+		{
+			console.log("  '%s' -> '%s'", roomData.oldAliasList[i], roomData.newAliasList[i]);
+		}
+	}
+	console.log();
+}
+
+
 function updateRooms()
 {
 	console.log();
-	console.log("Changes:");
+	console.log("Found %d rooms to change.", roomsToChange.size);
+	console.log("Proposed Changes:");
 	console.log();
 
 	// Display the list of proposed changes
-	roomsToChange.forEach(function(roomData, roomId) { console.log(roomId); console.log(roomData), console.log() })
+	roomsToChange.forEach(function(roomData, roomId) { displayRoomData(roomId, roomData); })
 
 	if(readline.keyInYN("Do you want to set this?"))
 	{
