@@ -78,20 +78,26 @@ function addRoomToChange(roomObj)
 		{
 			changeData.oldCanonicalAlias = oldCanonicalAlias;
 			changeData.newCanonicalAlias = addOrReplacePrefixForAlias(oldCanonicalAlias);
+			changeData.addCanonicalAlias = true;
 		}
 		if(oldAliasList)
 		{
 			// NOTE: The alias list only contains PUBLISHED aliases.
 			let newAliasList=[];
+			let canonicalAliasFound=false;
 			for(const alias of oldAliasList)
 			{
+				if(alias === oldCanonicalAlias)
+					canonicalAliasFound = true;
 				newAliasList[newAliasList.length]=addOrReplacePrefixForAlias(alias);
 			}
+			changeData.addCanonicalAlias = !canonicalAliasFound;
 			changeData.oldAliasList = oldAliasList;
 			changeData.newAliasList = newAliasList;
 		}
 	}
 
+	// Find the Space that the room is in (if any).
 	if(roomObj.parentObj)
 	{
 		changeData.parent = roomObj.parentObj['state_key'];
@@ -168,10 +174,9 @@ async function modifyRoomAliases(roomId, oldAliasList, newAliasList)
 
 async function setSpaceChild(roomId, childId, via)
 {
-	setSpaceChildEvent =
-	{
-		"via": via,
-	}
+	setSpaceChildEvent = {};
+	if(via)
+		setSpaceChildEvent["via"] = via;
 
 	await theMatrix.sendStateEvent(roomId, "m.space.child", childId, setSpaceChildEvent);
 }
@@ -194,6 +199,12 @@ async function updateRoom(roomId, roomData)
 	if(roomData.newAliasList)
 		await modifyRoomAliases(roomId, roomData.oldAliasList, roomData.newAliasList);
 
+	if(roomData.addCanonicalAlias)
+	{
+		await modifyRoomAliases(roomId, [roomData.oldCanonicalAlias], [roomData.newCanonicalAlias]);
+		roomData.newAliasList[roomData.newAliasList.length] = roomData.newCanonicalAlias;
+	}
+
 	if(roomData.newCanonicalAlias)
 		await setRoomAliases(roomId, roomData.newCanonicalAlias, roomData.newAliasList);
 
@@ -201,6 +212,11 @@ async function updateRoom(roomId, roomData)
 	{
 		await setSpaceChild(Settings.targetSpace, roomId, Settings.targetVia);
 		await setSpaceParent(roomId, Settings.targetSpace, Settings.targetVia);
+		if(Settings.removeRoomFromOldSpace && roomData.parent)
+		{
+			// Remove from existing parent.
+			await setSpaceChild(roomData.parent, roomId, undefined);
+		}
 	}
 }
 

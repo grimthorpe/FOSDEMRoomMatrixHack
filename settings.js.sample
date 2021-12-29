@@ -16,3 +16,6 @@ exports.targetSpace = '!example:example.org';
 // The target Space 'via's (typically just the matric server address)
 exports.targetVia = [ 'example.org' ];
 
+// If true then remove the room from its old space. If not removed then the Room will live in both Spaces.
+exports.removeRoomFromOldSpace = false;
+
