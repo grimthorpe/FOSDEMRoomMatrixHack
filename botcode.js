@@ -166,7 +166,11 @@ async function modifyRoomAliases(roomId, oldAliasList, newAliasList)
 	{
 		if(oldAliasList[i] != newAliasList[i])
 		{
-			await theMatrix.createRoomAlias(newAliasList[i], roomId);
+			try
+			{
+				await theMatrix.createRoomAlias(newAliasList[i], roomId);
+			}
+			catch(err) {}
 			await theMatrix.deleteRoomAlias(oldAliasList[i]);
 		}
 	}
@@ -194,28 +198,41 @@ async function setSpaceParent(roomId, parentId, via)
 
 async function updateRoom(roomId, roomData)
 {
-	await setRoomName(roomId, roomData.newRoomName);
-
-	if(roomData.newAliasList)
-		await modifyRoomAliases(roomId, roomData.oldAliasList, roomData.newAliasList);
-
-	if(roomData.addCanonicalAlias)
+	try
 	{
-		await modifyRoomAliases(roomId, [roomData.oldCanonicalAlias], [roomData.newCanonicalAlias]);
-		roomData.newAliasList[roomData.newAliasList.length] = roomData.newCanonicalAlias;
-	}
+		await setRoomName(roomId, roomData.newRoomName);
 
-	if(roomData.newCanonicalAlias)
-		await setRoomAliases(roomId, roomData.newCanonicalAlias, roomData.newAliasList);
+		if(roomData.newAliasList)
+			await modifyRoomAliases(roomId, roomData.oldAliasList, roomData.newAliasList);
 
-	if(roomData.parent != Settings.targetSpace)
-	{
-		await setSpaceChild(Settings.targetSpace, roomId, Settings.targetVia);
-		await setSpaceParent(roomId, Settings.targetSpace, Settings.targetVia);
-		if(Settings.removeRoomFromOldSpace && roomData.parent)
+		if(roomData.addCanonicalAlias)
 		{
-			// Remove from existing parent.
-			await setSpaceChild(roomData.parent, roomId, undefined);
+			await modifyRoomAliases(roomId, [roomData.oldCanonicalAlias], [roomData.newCanonicalAlias]);
+			roomData.newAliasList[roomData.newAliasList.length] = roomData.newCanonicalAlias;
+		}
+
+		if(roomData.newCanonicalAlias)
+			await setRoomAliases(roomId, roomData.newCanonicalAlias, roomData.newAliasList);
+
+		if(roomData.parent != Settings.targetSpace)
+		{
+			await setSpaceChild(Settings.targetSpace, roomId, Settings.targetVia);
+			await setSpaceParent(roomId, Settings.targetSpace, Settings.targetVia);
+			if(Settings.removeRoomFromOldSpace && roomData.parent)
+			{
+				// Remove from existing parent.
+				await setSpaceChild(roomData.parent, roomId, undefined);
+			}
+		}
+	}
+	catch(err)
+	{
+		console.log("Error occurred updating Room %s (%s)", roomData.oldRoomName, roomId);
+//		console.log(err);
+
+		if(!readline.keyInYN("Do you want to continue to the next Room?"))
+		{
+			throw "Aborted by user";
 		}
 	}
 }
@@ -258,6 +275,10 @@ function updateRooms()
 		let count = 1;
 		let totalCount = roomsToChange.size;
 		roomsToChange.forEach(function(roomData, roomId) { displayProgress(count++, totalCount, roomId + " - " + roomData.oldRoomName + " -> " + roomData.newRoomName); updateRoom(roomId, roomData); });
+	}
+	else
+	{
+		throw "Aborted by user";
 	}
 }
 
