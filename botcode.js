@@ -133,7 +133,14 @@ async function enumerateRooms()
 		}
 	}
 
-	updateRooms();
+	try
+	{
+		updateRooms();
+	}
+	catch(err)
+	{
+		console.log(err);
+	}
 }
 
 async function setRoomName(roomId, newName)
