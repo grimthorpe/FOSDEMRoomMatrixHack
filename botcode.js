@@ -103,6 +103,7 @@ function addRoomToChange(roomObj)
 		changeData.parent = roomObj.parentObj['state_key'];
 	}
 
+	changeData.powerLevels = roomObj.powerObj['content'];
 	roomsToChange.set(roomObj.roomId, changeData);
 }
 
@@ -126,6 +127,8 @@ async function enumerateRooms()
 		roomObj.nameObj = stateObj.find(o => o['type'] === 'm.room.name');
 		roomObj.aliasObj = stateObj.find(o => o['type'] === 'm.room.canonical_alias');
 		roomObj.createObj = stateObj.find(o => o['type'] === 'm.room.create');
+		roomObj.powerObj = stateObj.find(o => o['type'] === 'm.room.power_levels');
+console.log(roomObj.powerObj);
 		
 		if(isValidRoomToChange(roomObj))
 		{
@@ -135,7 +138,7 @@ async function enumerateRooms()
 
 	try
 	{
-		updateRooms();
+		await updateRooms();
 	}
 	catch(err)
 	{
@@ -203,6 +206,19 @@ async function setSpaceParent(roomId, parentId, via)
 	await theMatrix.sendStateEvent(roomId, "m.space.parent", parentId, setSpaceParentEvent);
 }
 
+async function setPowerLevelEvent(roomId, powerLevelContent)
+{
+try
+{
+	await theMatrix.sendStateEvent(roomId, "m.room.power_levels", "", powerLevelContent);
+}
+catch(err)
+{
+console.log("Exception in setPowerLevelEvent");
+throw err;
+}
+}
+
 async function updateRoom(roomId, roomData)
 {
 	try
@@ -231,6 +247,9 @@ async function updateRoom(roomId, roomData)
 				await setSpaceChild(roomData.parent, roomId, undefined);
 			}
 		}
+
+		roomData.powerLevels['events_default'] = 50;
+		await setPowerLevelEvent(roomId, roomData.powerLevels);
 	}
 	catch(err)
 	{
@@ -239,6 +258,7 @@ async function updateRoom(roomId, roomData)
 
 		if(!readline.keyInYN("Do you want to continue to the next Room?"))
 		{
+throw err;
 			throw "Aborted by user";
 		}
 	}
@@ -267,7 +287,7 @@ function displayRoomData(roomId, roomData)
 }
 
 
-function updateRooms()
+async function updateRooms()
 {
 	console.log();
 	console.log("Found %d rooms to change.", roomsToChange.size);
@@ -281,7 +301,7 @@ function updateRooms()
 	{
 		let count = 1;
 		let totalCount = roomsToChange.size;
-		roomsToChange.forEach(function(roomData, roomId) { displayProgress(count++, totalCount, roomId + " - " + roomData.oldRoomName + " -> " + roomData.newRoomName); updateRoom(roomId, roomData); });
+		roomsToChange.forEach(async function(roomData, roomId) { displayProgress(count++, totalCount, roomId + " - " + roomData.oldRoomName + " -> " + roomData.newRoomName); await updateRoom(roomId, roomData); });
 	}
 	else
 	{
