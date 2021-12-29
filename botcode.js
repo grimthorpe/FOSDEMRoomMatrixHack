@@ -1,15 +1,11 @@
 const {MatrixClient, LogService, LogLevel, UserID} = require("matrix-bot-sdk");
 const readline = require("readline-sync");
 
-// The idea is that we are prepending a year on to room names and aliases.
-// NOTE: We can oonly deal with numeric prefixes here
-const newPrefix = "2021";
-
-// Load credentials - see accesstoken.js.sample
-Creds = require("./accesstoken.js");
+// Load settings - see settings.js.sample
+Settings = require("./settings.js");
 
 // Connect to the matrix
-const theMatrix = new MatrixClient(Creds.matrixServerURL, Creds.accessToken);
+const theMatrix = new MatrixClient(Settings.matrixServerURL, Settings.accessToken);
 //LogService.setLevel(LogLevel.DEBUG);
 
 roomsToChange=new Map();
@@ -29,7 +25,7 @@ function isValidRoomToChange(roomObj)
 		return false;
 
 	// Check if the room creator matches
-	return roomObj.createObj['content']['creator'] === Creds.username;
+	return roomObj.createObj['content']['creator'] === Settings.username;
 }
 
 // Add or replace the prefix on a name or alias.
@@ -40,7 +36,7 @@ function addOrReplacePrefix(name, prefixSeperator)
 	if(pos >= 0)
 	{
 		// Check if our prefix lengths match.
-		if(pos == newPrefix.length)
+		if(pos == Settings.targetPrefix.length)
 		{
 			const s = name.substring(0, pos);
 			// Dirty check for numeric value - parse the string as an integer and then check if that matches with the original string.
@@ -51,7 +47,7 @@ function addOrReplacePrefix(name, prefixSeperator)
 		}
 	}
 
-	return newPrefix + prefixSeperator + name;
+	return Settings.targetPrefix + prefixSeperator + name;
 }
 
 function addOrReplacePrefixForName(name)
@@ -96,6 +92,11 @@ function addRoomToChange(roomObj)
 		}
 	}
 
+	if(roomObj.parentObj)
+	{
+		changeData.parent = roomObj.parentObj['state_key'];
+	}
+
 	roomsToChange.set(roomObj.roomId, changeData);
 }
 
@@ -115,10 +116,11 @@ async function enumerateRooms()
 		roomObj={roomId: roomId};
 
 		const stateObj = await theMatrix.getRoomState(roomId);
+		roomObj.parentObj = stateObj.find(o => o['type'] === 'm.space.parent');
 		roomObj.nameObj = stateObj.find(o => o['type'] === 'm.room.name');
 		roomObj.aliasObj = stateObj.find(o => o['type'] === 'm.room.canonical_alias');
 		roomObj.createObj = stateObj.find(o => o['type'] === 'm.room.create');
-
+		
 		if(isValidRoomToChange(roomObj))
 		{
 			addRoomToChange(roomObj);
@@ -154,16 +156,36 @@ async function setRoomAliases(roomId, canonicalAlias, aliasList)
 
 async function modifyRoomAliases(roomId, oldAliasList, newAliasList)
 {
-	for(const alias of oldAliasList)
+	for(let i = 0; i < oldAliasList.length; i++)
 	{
-		await theMatrix.deleteRoomAlias(alias);
-	}
-	for(const alias of newAliasList)
-	{
-		await theMatrix.createRoomAlias(alias, roomId);
+		if(oldAliasList[i] != newAliasList[i])
+		{
+			await theMatrix.createRoomAlias(newAliasList[i], roomId);
+			await theMatrix.deleteRoomAlias(oldAliasList[i]);
+		}
 	}
 }
 
+async function setSpaceChild(roomId, childId, via)
+{
+	setSpaceChildEvent =
+	{
+		"via": via,
+	}
+
+	await theMatrix.sendStateEvent(roomId, "m.space.child", childId, setSpaceChildEvent);
+}
+
+async function setSpaceParent(roomId, parentId, via)
+{
+	setSpaceParentEvent =
+	{
+		"via": via,
+		"canonical": true,
+	}
+
+	await theMatrix.sendStateEvent(roomId, "m.space.parent", parentId, setSpaceParentEvent);
+}
 
 async function updateRoom(roomId, roomData)
 {
@@ -174,6 +196,12 @@ async function updateRoom(roomId, roomData)
 
 	if(roomData.newCanonicalAlias)
 		await setRoomAliases(roomId, roomData.newCanonicalAlias, roomData.newAliasList);
+
+	if(roomData.parent != Settings.targetSpace)
+	{
+		await setSpaceChild(Settings.targetSpace, roomId, Settings.targetVia);
+		await setSpaceParent(roomId, Settings.targetSpace, Settings.targetVia);
+	}
 }
 
 function displayRoomData(roomId, roomData)
@@ -190,6 +218,11 @@ function displayRoomData(roomId, roomData)
 			console.log("  '%s' -> '%s'", roomData.oldAliasList[i], roomData.newAliasList[i]);
 		}
 	}
+	if(roomData.parent)
+		console.log("Parent space: '%s' -> '%s'", roomData.parent, Settings.targetSpace);
+	else
+		console.log("Parent space: <NONE> -> '%s'", Settings.targetSpace);
+
 	console.log();
 }
 

@@ -1,0 +1,18 @@
+// Bot access token. DO NOT PUBLISH!!!!
+exports.accessToken="<REDACTED>";
+
+// Which Matrix server to use
+exports.matrixServerURL="https://example.org";
+
+// The username of the bot (must be the owner of the rooms to be moved)
+exports.username="@example:example.org";
+
+// The target 'year' prefix. MUST BE NUMERIC.
+exports.targetPrefix = '2021';
+
+// The target Space id
+exports.targetSpace = '!example:example.org';
+
+// The target Spsace 'via's (typically just the matric server address)
+exports.targetVia = [ 'example.org' ];
+
