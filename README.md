@@ -9,7 +9,7 @@ INSTALLATION:
 
 - Clone the code
 - Run 'npm install' to install the required javascript libraries
-- Copy accesstoken.js.sample to accesstoken.js and modify appropriately.
+- Copy settings.js.sample to settings.js and modify appropriately.
 - Run 'node ./botcode.js' to run the code.
 
 
