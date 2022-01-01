@@ -1,12 +1,22 @@
 const {MatrixClient, LogService, LogLevel, UserID} = require("matrix-bot-sdk");
 const readline = require("readline-sync");
 
+// Missing functionality from matrix-bot-sdk
+class MatrixClientEx extends MatrixClient
+{
+	// Get the list of room aliases
+	async getRoomAliases(roomId)
+	{
+		return this.doRequest("GET", "/_matrix/client/r0/rooms/" + encodeURIComponent(roomId) + "/aliases").then(response => response['aliases']);
+	}
+}
+
 // Load settings - see settings.js.sample
 Settings = require("./settings.js");
 
 // Connect to the matrix
-const theMatrix = new MatrixClient(Settings.matrixServerURL, Settings.accessToken);
-//LogService.setLevel(LogLevel.DEBUG);
+const theMatrix = new MatrixClientEx(Settings.matrixServerURL, Settings.accessToken);
+LogService.setLevel(LogLevel.DEBUG);
 
 roomsToChange=new Map();
 
@@ -128,7 +138,6 @@ async function enumerateRooms()
 		roomObj.aliasObj = stateObj.find(o => o['type'] === 'm.room.canonical_alias');
 		roomObj.createObj = stateObj.find(o => o['type'] === 'm.room.create');
 		roomObj.powerObj = stateObj.find(o => o['type'] === 'm.room.power_levels');
-console.log(roomObj.powerObj);
 		
 		if(isValidRoomToChange(roomObj))
 		{
@@ -158,6 +167,7 @@ async function setRoomName(roomId, newName)
 
 async function setRoomAliases(roomId, canonicalAlias, aliasList)
 {
+console.log(await theMatrix.getRoomAliases(roomId));
 	setCanonicalAliasEvent = {}
 	if(canonicalAlias)
 	{
