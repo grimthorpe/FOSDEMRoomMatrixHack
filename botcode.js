@@ -167,7 +167,8 @@ async function setRoomName(roomId, newName)
 
 async function setRoomAliases(roomId, canonicalAlias, aliasList)
 {
-console.log(await theMatrix.getRoomAliases(roomId));
+//Disable the call to getRoomAliases because it is rate-limited, and we don't do anything to limit our calls.
+//console.log(await theMatrix.getRoomAliases(roomId));
 	setCanonicalAliasEvent = {}
 	if(canonicalAlias)
 	{
