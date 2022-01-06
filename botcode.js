@@ -335,7 +335,12 @@ async function updateRooms()
 	{
 		let count = 1;
 		let totalCount = roomsToChange.size;
-		roomsToChange.forEach(async function(roomData, roomId) { displayProgress(count++, totalCount, roomId + " - " + roomData.oldRoomName + " -> " + roomData.newRoomName); await updateRoom(roomId, roomData); });
+
+		for(const [roomId, roomData] of roomsToChange.entries())
+		{
+			displayProgress(count++, totalCount, roomId + " - " + roomData.oldRoomName + " -> " + roomData.newRoomName);
+			await updateRoom(roomId, roomData);
+		}
 	}
 	else
 	{
