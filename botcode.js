@@ -183,6 +183,7 @@ async function setRoomAliases(roomId, canonicalAlias, aliasList)
 
 async function modifyRoomAliases(roomId, oldAliasList, newAliasList)
 {
+	let changed = false;
 	for(let i = 0; i < oldAliasList.length; i++)
 	{
 		if(oldAliasList[i] != newAliasList[i])
@@ -193,8 +194,10 @@ async function modifyRoomAliases(roomId, oldAliasList, newAliasList)
 			}
 			catch(err) {}
 			await theMatrix.deleteRoomAlias(oldAliasList[i]);
+			changed = true;
 		}
 	}
+	return changed;
 }
 
 async function setSpaceChild(roomId, childId, via)
@@ -219,60 +222,75 @@ async function setSpaceParent(roomId, parentId, via)
 
 async function setPowerLevelEvent(roomId, powerLevelContent)
 {
-try
-{
 	await theMatrix.sendStateEvent(roomId, "m.room.power_levels", "", powerLevelContent);
-}
-catch(err)
-{
-console.log("Exception in setPowerLevelEvent");
-throw err;
-}
 }
 
 async function updateRoom(roomId, roomData)
 {
-	try
+	let retryCount = 5;
+	let done = false;
+	do
 	{
-		await setRoomName(roomId, roomData.newRoomName);
-
-		if(roomData.newAliasList)
-			await modifyRoomAliases(roomId, roomData.oldAliasList, roomData.newAliasList);
-
-		if(roomData.addCanonicalAlias)
+		try
 		{
-			await modifyRoomAliases(roomId, [roomData.oldCanonicalAlias], [roomData.newCanonicalAlias]);
-			roomData.newAliasList[roomData.newAliasList.length] = roomData.newCanonicalAlias;
-		}
-
-		if(roomData.newCanonicalAlias)
-			await setRoomAliases(roomId, roomData.newCanonicalAlias, roomData.newAliasList);
-
-		if(roomData.parent != Settings.targetSpace)
-		{
-			await setSpaceChild(Settings.targetSpace, roomId, Settings.targetVia);
-			await setSpaceParent(roomId, Settings.targetSpace, Settings.targetVia);
-			if(Settings.removeRoomFromOldSpace && roomData.parent)
+			if(roomData.oldRoomName != roomData.newRoomName)
 			{
-				// Remove from existing parent.
-				await setSpaceChild(roomData.parent, roomId, undefined);
+				await setRoomName(roomId, roomData.newRoomName);
+			}
+
+			let aliasesChanged = false;
+			if(roomData.newAliasList)
+				aliasesChanged |= await modifyRoomAliases(roomId, roomData.oldAliasList, roomData.newAliasList);
+
+			if(roomData.addCanonicalAlias)
+			{
+				aliasesChanged |= await modifyRoomAliases(roomId, [roomData.oldCanonicalAlias], [roomData.newCanonicalAlias]);
+				roomData.newAliasList[roomData.newAliasList.length] = roomData.newCanonicalAlias;
+			}
+
+			if(roomData.newCanonicalAlias && aliasesChanged)
+			{
+				await setRoomAliases(roomId, roomData.newCanonicalAlias, roomData.newAliasList);
+			}
+
+			if(roomData.parent != Settings.targetSpace)
+			{
+				await setSpaceChild(Settings.targetSpace, roomId, Settings.targetVia);
+				await setSpaceParent(roomId, Settings.targetSpace, Settings.targetVia);
+				if(Settings.removeRoomFromOldSpace && roomData.parent)
+				{
+					// Remove from existing parent.
+					await setSpaceChild(roomData.parent, roomId, undefined);
+				}
+			}
+
+			if(roomData.powerLevels['events_default'] != 50)
+			{
+				roomData.powerLevels['events_default'] = 50;
+				await setPowerLevelEvent(roomId, roomData.powerLevels);
+			}
+			done = true;
+		}
+		catch(err)
+		{
+			console.log("Error occurred updating Room %s (%s)", roomData.oldRoomName, roomId);
+			if(retryCount-- <= 0)
+			{
+				if(!readline.keyInYN("Do you want to continue to the next Room?"))
+				{
+					throw "Aborted by user";
+				}
+				done = true;
+			}
+			else
+			{
+				console.log("Retrying.");
+				// Wait for 2 seconds before retrying
+				await new Promise(r => setTimeout(r, 2000));
 			}
 		}
-
-		roomData.powerLevels['events_default'] = 50;
-		await setPowerLevelEvent(roomId, roomData.powerLevels);
 	}
-	catch(err)
-	{
-		console.log("Error occurred updating Room %s (%s)", roomData.oldRoomName, roomId);
-//		console.log(err);
-
-		if(!readline.keyInYN("Do you want to continue to the next Room?"))
-		{
-throw err;
-			throw "Aborted by user";
-		}
-	}
+	while(!done);
 }
 
 function displayRoomData(roomId, roomData)
