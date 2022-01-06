@@ -136,7 +136,6 @@ async function enumerateRooms()
 		roomObj={roomId: roomId};
 
 		const stateObj = await theMatrix.getRoomState(roomId);
-		const spaceChildObjFoo = spaceObj.find(o => (o['type'] === 'm.space.child') && (o['state_key'] === roomId));
 		const spaceChildObj = spaceObj.find(o => (o['type'] === 'm.space.child') && (o['state_key'] === roomId) && (o['content']['via']));
 		roomObj.isInTargetSpace = spaceChildObj != undefined;
 		roomObj.parentObj = stateObj.find(o => o['type'] === 'm.space.parent');
