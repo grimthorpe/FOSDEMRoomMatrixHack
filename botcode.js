@@ -262,7 +262,7 @@ async function updateRoom(roomId, roomData)
 			{
 				await setSpaceChild(Settings.targetSpace, roomId, Settings.targetVia);
 				await setSpaceParent(roomId, Settings.targetSpace, Settings.targetVia);
-				if(Settings.removeRoomFromOldSpace && roomData.parent)
+				if(Settings.removeRoomFromOldSpace && (roomData.parent != Settings.targetSpace))
 				{
 					// Remove from existing parent.
 					await setSpaceChild(roomData.parent, roomId, undefined);
