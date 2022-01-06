@@ -108,6 +108,7 @@ function addRoomToChange(roomObj)
 	}
 
 	// Find the Space that the room is in (if any).
+	changeData.moveSpace = !roomObj.isInTargetSpace;
 	if(roomObj.parentObj)
 	{
 		changeData.parent = roomObj.parentObj['state_key'];
@@ -125,6 +126,8 @@ async function enumerateRooms()
 	let thisRoomCount = 0;
 	const stringRoomCount = String(totalRoomCount);
 
+	const spaceObj = await theMatrix.getRoomState(Settings.targetSpace);
+
 	for(const roomId of joinedRoomIds)
 	{
 		thisRoomCount++;
@@ -133,6 +136,9 @@ async function enumerateRooms()
 		roomObj={roomId: roomId};
 
 		const stateObj = await theMatrix.getRoomState(roomId);
+		const spaceChildObjFoo = spaceObj.find(o => (o['type'] === 'm.space.child') && (o['state_key'] === roomId));
+		const spaceChildObj = spaceObj.find(o => (o['type'] === 'm.space.child') && (o['state_key'] === roomId) && (o['content']['via']));
+		roomObj.isInTargetSpace = spaceChildObj != undefined;
 		roomObj.parentObj = stateObj.find(o => o['type'] === 'm.space.parent');
 		roomObj.nameObj = stateObj.find(o => o['type'] === 'm.room.name');
 		roomObj.aliasObj = stateObj.find(o => o['type'] === 'm.room.canonical_alias');
@@ -253,7 +259,7 @@ async function updateRoom(roomId, roomData)
 				await setRoomAliases(roomId, roomData.newCanonicalAlias, roomData.newAliasList);
 			}
 
-			if(roomData.parent != Settings.targetSpace)
+			if(roomData.moveSpace)
 			{
 				await setSpaceChild(Settings.targetSpace, roomId, Settings.targetVia);
 				await setSpaceParent(roomId, Settings.targetSpace, Settings.targetVia);
