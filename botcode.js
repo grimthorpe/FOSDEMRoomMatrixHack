@@ -1,5 +1,7 @@
 const {MatrixClient, LogService, LogLevel, UserID} = require("matrix-bot-sdk");
 const readline = require("readline-sync");
+const yargs = require("yargs");
+const fs = require("fs");
 
 // Missing functionality from matrix-bot-sdk
 class MatrixClientEx extends MatrixClient
@@ -118,10 +120,14 @@ function addRoomToChange(roomObj)
 	roomsToChange.set(roomObj.roomId, changeData);
 }
 
-async function enumerateRooms()
+async function enumerateRooms(joinedRoomIds)
 {
 	// Get all the rooms we are in
-	const joinedRoomIds = await theMatrix.getJoinedRooms();
+	if(joinedRoomIds == undefined)
+	{
+		joinedRoomIds = await theMatrix.getJoinedRooms();
+	}
+
 	const totalRoomCount = joinedRoomIds.length;
 	let thisRoomCount = 0;
 	const stringRoomCount = String(totalRoomCount);
@@ -348,5 +354,24 @@ async function updateRooms()
 	}
 }
 
-enumerateRooms();
+const argv = yargs(process.argv.slice(2))
+	.usage('Usage: $0 [OPTIONS]')
+	.alias('f', 'file')
+	.nargs('file', 1)
+	.describe('file', 'File containing list of roomIds to work on')
+	.argv;
+
+let roomIds = undefined;
+if(argv.file)
+{
+console.log(argv.file);
+	roomIds=[];
+	for(const roomId of fs.readFileSync(argv.file).toString().split("\n"))
+	{
+		if((roomId != "") && (roomId[0] != '#'))
+			roomIds.push(roomId);
+	}
+}
+
+enumerateRooms(roomIds);
 
