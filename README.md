@@ -4,6 +4,7 @@ Update existing FOSDEM Room aliases to include the year
 Pre-requisites:
 - npm
 - nodejs
+- yargs
 
 INSTALLATION:
 
