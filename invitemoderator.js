@@ -76,20 +76,6 @@ async function enumerateRooms(modbot, joinedRoomIds)
 		}
 	}
 }
-async function setAdmin(modbot, roomId)
-{
-	const roomState = await theMatrix.getRoomState(roomId);
-	let powerObj = roomState.find(o => o['type'] === 'm.room.power_levels')['content'];
-	
-	if(!powerObj['users'])
-		powerObj['users'] = [];
-
-	if(powerObj['users'][modbot] != 100)
-	{
-		powerObj['users'][modbot]=100;
-		await setPowerLevelEvent(roomId, powerObj);
-	}
-}
 
 async function setPowerLevelEvent(roomId, powerLevelContent)
 {
