@@ -48,31 +48,35 @@ async function enumerateRooms(modbot, joinedRoomIds)
 		let powerObj = roomState.find(o => o['type'] === 'm.room.power_levels')['content'];
 		// Invite the moderator bot into every room
 		// As this is quick-and-dirty this could fail at any point and we'd not really care.
-		try
+		if(powerObj['users'][Settings.username] == 100)
 		{
-
-			if(powerObj['users'][Settings.username] == 100)
+			try
 			{
-				let failed = false;
-				try
+				let member = roomState.find(o => (o['type'] === 'm.room.member') && (o['user_id'] === modbot));
+				if(!member)
 				{
 					// TODO:
 					// We will get rate-limited and have to deal with it.
-					// But no today.
+					// But not today.
 					await theMatrix.inviteUser(modbot, roomId);
 				}
-				catch(x)
-				{
-					failed = true;
-					console.log("Unable to invite " + modbot + " to " + roomId);
-				}
-				powerObj['users'][modbot] = 100;
-				await setPowerLevelEvent(roomId, powerObj);
 			}
-		}
-		catch(err)
-		{
-			console.log("Failed");
+			catch(x)
+			{
+				console.log("Unable to invite " + modbot + " to " + roomId);
+			}
+			try
+			{
+				if(powerObj['users'][modbot] != 100)
+				{
+					powerObj['users'][modbot] = 100;
+					await setPowerLevelEvent(roomId, powerObj);
+				}
+			}
+			catch(err)
+			{
+				console.log(err);
+			}
 		}
 	}
 }
